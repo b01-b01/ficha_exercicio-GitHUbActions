@@ -1,0 +1,45 @@
+name: CI/CD Pipeline
+
+# Iniciar automaticamente após um novo commit 
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  check-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - [cite_start]name: Check Commit Message [cite: 12]
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          # A regra: Tem de começar por FEAT: ou FIX:
+          if [[ ! "$COMMIT_MSG" =~ ^(FEAT:|FIX:) ]]; then
+            echo "ERRO: A tua mensagem de commit deve começar por 'FEAT:' ou 'FIX:'."
+            exit 1
+          fi
+
+  build-and-publish:
+    needs: check-commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - [cite_start]name: Build and Push Docker Image [cite: 11, 13]
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # Publica nos Packages do repositório 
+          tags: ghcr.io/${{ github.repository }}/hello-world-app:latest
